@@ -14,17 +14,17 @@ document.body.appendChild(renderer.domElement);
 
 // --- تهيئة OrbitControls ---
 const controls = new OrbitControls(camera, renderer.domElement);
-controls.enableDamping = true; // لتمكين حركة كاميرا أكثر سلاسة
-controls.dampingFactor = 0.05; // قوة التخميد
+controls.enableDamping = true;
+controls.dampingFactor = 0.05;
 
-// <--- NEW: تعطيل التحريك والتكبير/التصغير بواسطة OrbitControls لنتحكم بها يدوياً
-controls.enablePan = false; // تعطيل تحريك الكاميرا بزر الماوس الأيمن
-controls.enableZoom = true; // التكبير/التصغير بعجلة الماوس (سنقوم به يدوياً)
+controls.enablePan = false;
+controls.enableZoom = true;
 
-controls.screenSpacePanning = false; // ليس له تأثير كبير بعد تعطيل enablePan
-controls.maxPolarAngle = Math.PI / 2; // يمنع الكاميرا من الذهاب تحت الأرض
-controls.target.set(0, 250, 0); // نقطة التركيز الأولية للدوران
-controls.rotateSpeed =0.5;
+controls.screenSpacePanning = false;
+controls.maxPolarAngle = Math.PI / 2;
+controls.target.set(0, 250, 0);
+controls.rotateSpeed = 0.2; // سرعة دوران الكاميرا بالماوس (تم إبطاءها)
+
 // --- الأضواء ---
 const ambientLight = new THREE.AmbientLight(0x404040, 2);
 scene.add(ambientLight);
@@ -50,7 +50,7 @@ const parachuteMaterial = new THREE.MeshStandardMaterial({ color: 0x00ffff, side
 // --- إنشاء الأرض (تضاريس باستخدام Simplex Noise) ---
 const terrainWidth = 1000;
 const terrainDepth = 1000;
-const terrainResolution = 128;
+const terrainResolution = 128; // <--- مهم: حافظنا على الدقة لإنشاء تضاريس
 const terrainMaxHeight = 50;
 
 const terrainGeometry = new THREE.PlaneGeometry(terrainWidth, terrainDepth, terrainResolution - 1, terrainResolution - 1);
@@ -74,7 +74,8 @@ terrain.receiveShadow = true;
 scene.add(terrain);
 
 // --- إنشاء المظلي (المكعب) ---
-const skydiverGeometry = new THREE.BoxGeometry(2, 2, 2);
+const skydiverHeight = 2; // <--- NEW: إضافة ارتفاع المظلي
+const skydiverGeometry = new THREE.BoxGeometry(2, skydiverHeight, 2); // <--- NEW: استخدام skydiverHeight هنا
 const skydiver = new THREE.Mesh(skydiverGeometry, skydiverMaterial);
 skydiver.castShadow = true;
 skydiver.visible = true;
@@ -97,7 +98,7 @@ scene.add(airplane);
 // --- إعدادات المحاكاة الفيزيائية ---
 const G = 9.81;
 const RHO = 1.225;
-const DT = 0.016;
+const DT = 0.016; // <--- مهم: هذا هو مقدار تقدم الزمن في كل إطار
 
 let skydiverMass = 75;
 let skydiverPosition = new THREE.Vector3();
@@ -129,18 +130,17 @@ skydiverPosition.copy(airplaneInitialPosition);
 
 camera.position.set(0, 550, 400); // موضع الكاميرا الأولي
 
-// <--- NEW: إعادة تعريف متغيرات التحكم اليدوية بالكاميرا
+// <--- إعادة تعريف متغيرات التحكم اليدوية بالكاميرا
 const cameraSpeed = 100; // سرعة حركة الكاميرا
 const keyState = {
-    w: false,
-    s: false,
-    a: false,
-    d: false,
-    q: false, // NEW: Q للتحرك لأعلى
-    e: false, // NEW: E للتحرك لأسفل
-    arrowUp: false, // يمكن إعادة استخدام هذه أو استخدام Q/E
-    arrowDown: false // يمكن إعادة استخدام هذه أو استخدام Q/E
+    w: false, s: false, a: false, d: false,
+    q: false, e: false,
+    arrowUp: false, arrowDown: false
 };
+
+// <--- NEW: تعريف Raycaster للتعامل مع التصادمات
+const raycaster = new THREE.Raycaster();
+const down = new THREE.Vector3(0, -1, 0); // شعاع يشير للأسفل
 
 // --- وظيفة تحديث الفيزياء ---
 function updatePhysics() {
@@ -162,85 +162,88 @@ function updatePhysics() {
         totalForce.add(windForce);
         skydiverAcceleration.copy(totalForce).divideScalar(skydiverMass);
 
+        // خطوة تحديث السرعة والموقع
         skydiverVelocity.add(skydiverAcceleration.clone().multiplyScalar(DT));
         skydiverPosition.add(skydiverVelocity.clone().multiplyScalar(DT));
 
-        skydiver.position.copy(skydiverPosition);
+        // <--- NEW: اكتشاف التصادم باستخدام Raycasting
+        // ابدأ الشعاع من مركز المظلي، واتجه به للأسفل
+        raycaster.set(skydiverPosition, down);
+        // ابحث عن التقاطعات فقط مع كائن الأرض
+        const intersects = raycaster.intersectObject(terrain);
+
+        if (intersects.length > 0) {
+            // هناك تقاطع مع الأرض
+            const collisionPoint = intersects[0].point;
+            const groundHeightAtSkydiver = collisionPoint.y;
+
+            // إذا كان الجزء السفلي للمظلي قد اخترق الأرض أو وصل إليها
+            if (skydiverPosition.y - (skydiverHeight / 2) <= groundHeightAtSkydiver) {
+                // اضبط موضع المظلي بحيث تكون قاعدته بالضبط عند ارتفاع الأرض
+                skydiverPosition.y = groundHeightAtSkydiver + (skydiverHeight / 2);
+
+                // إيقاف الحركة عند الهبوط
+                skydiverVelocity.set(0, 0, 0); 
+                skydiverAcceleration.set(0, 0, 0); 
+                simulationStarted = false; // إيقاف المحاكاة
+                console.log("Skydiver landed safely!");
+                parachute.visible = false;
+                skydiver.material.color.set(0x00ff00); // تغيير لون المظلي عند الهبوط
+            }
+        }
+        // <--- END NEW
+
+        skydiver.position.copy(skydiverPosition); // تحديث الموضع المرئي للمظلي
 
         if (isParachuteOpen) {
             parachute.position.copy(skydiverPosition).add(new THREE.Vector3(0, 5, 0));
             parachute.rotation.y += 0.05;
         }
-
-        const groundHeightAtSkydiver = getTerrainHeight(skydiverPosition.x, skydiverPosition.z);
-        if (skydiverPosition.y <= groundHeightAtSkydiver) {
-            skydiverPosition.y = groundHeightAtSkydiver;
-            skydiverVelocity.set(0, 0, 0);
-            skydiverAcceleration.set(0, 0, 0);
-            simulationStarted = false;
-            console.log("Skydiver landed safely!");
-            parachute.visible = false;
-            skydiver.material.color.set(0x00ff00);
-        }
     }
 }
 
-function getTerrainHeight(x, z) {
-    const halfWidth = terrainWidth / 2;
-    const halfDepth = terrainDepth / 2;
+// <--- تم إزالة دالة getTerrainHeight القديمة لأن Raycasting يقوم بالمهمة
+// (ولم تعد تُستخدم)
+// function getTerrainHeight(x, z) {
+//     const noise = noise2D(x / 75, z / 75) * 0.5 + 0.5;
+//     return noise * terrainMaxHeight;
+// }
 
-    const ix = Math.floor((x + halfWidth) / (terrainWidth / (terrainResolution - 1)));
-    const iz = Math.floor((z + halfDepth) / (terrainDepth / (terrainResolution - 1)));
 
-    if (ix < 0 || ix >= terrainResolution || iz < 0 || iz >= terrainResolution) {
-        return 0;
-    }
-
-    const vertexIndex = (iz * terrainResolution + ix) * 3 + 1;
-
-    if (vertexIndex < 0 || vertexIndex >= vertices.length) return 0;
-
-    return vertices[vertexIndex] + terrain.position.y;
-}
-
-// <--- NEW: إعادة دالة updateCameraPosition لتتحكم في الحركة
+// <--- دالة updateCameraPosition كما هي
 function updateCameraPosition() {
-    // الحصول على اتجاهات الكاميرا (أمام، يمين، أعلى)
     const cameraDirection = new THREE.Vector3();
-    camera.getWorldDirection(cameraDirection); // الاتجاه الذي تنظر إليه الكاميرا (الأمام)
+    camera.getWorldDirection(cameraDirection);
 
     const right = new THREE.Vector3();
-    right.crossVectors(cameraDirection, camera.up); // اتجاه يمين الكاميرا
-    right.normalize(); // تأكد من أنه متجه وحدة
+    right.crossVectors(cameraDirection, camera.up);
+    right.normalize();
 
-    // الأمام/الخلف (W/S)
     if (keyState.w) {
         camera.position.addScaledVector(cameraDirection, cameraSpeed * DT);
-        controls.target.addScaledVector(cameraDirection, cameraSpeed * DT); // <--- NEW: تحريك نقطة التركيز مع الكاميرا
+        controls.target.addScaledVector(cameraDirection, cameraSpeed * DT);
     }
     if (keyState.s) {
         camera.position.addScaledVector(cameraDirection, -cameraSpeed * DT);
-        controls.target.addScaledVector(cameraDirection, -cameraSpeed * DT); // <--- NEW: تحريك نقطة التركيز مع الكاميرا
+        controls.target.addScaledVector(cameraDirection, -cameraSpeed * DT);
     }
 
-    // اليمين/اليسار (D/A)
     if (keyState.d) {
         camera.position.addScaledVector(right, cameraSpeed * DT);
-        controls.target.addScaledVector(right, cameraSpeed * DT); // <--- NEW: تحريك نقطة التركيز مع الكاميرا
+        controls.target.addScaledVector(right, cameraSpeed * DT);
     }
     if (keyState.a) {
         camera.position.addScaledVector(right, -cameraSpeed * DT);
-        controls.target.addScaledVector(right, -cameraSpeed * DT); // <--- NEW: تحريك نقطة التركيز مع الكاميرا
+        controls.target.addScaledVector(right, -cameraSpeed * DT);
     }
 
-    // الأعلى/الأسفل (Q/E أو ArrowUp/ArrowDown)
-    if (keyState.q || keyState.arrowUp) { // يمكن استخدام Q أو السهم الأعلى
+    if (keyState.q || keyState.arrowUp) {
         camera.position.y += cameraSpeed * DT;
-        controls.target.y += cameraSpeed * DT; // <--- NEW: تحريك نقطة التركيز مع الكاميرا
+        controls.target.y += cameraSpeed * DT;
     }
-    if (keyState.e || keyState.arrowDown) { // يمكن استخدام E أو السهم الأسفل
+    if (keyState.e || keyState.arrowDown) {
         camera.position.y -= cameraSpeed * DT;
-        controls.target.y -= cameraSpeed * DT; // <--- NEW: تحريك نقطة التركيز مع الكاميرا
+        controls.target.y -= cameraSpeed * DT;
     }
 }
 
@@ -249,7 +252,6 @@ function updateCameraPosition() {
 function animate() {
     requestAnimationFrame(animate);
 
-    // حركة الطائرة والمظلي قبل القفز
     if (airplaneFlying) { 
         airplane.position.z -= airplaneSpeed * DT;
         if (!simulationStarted) { 
@@ -260,8 +262,8 @@ function animate() {
 
     updatePhysics();
 
-    updateCameraPosition(); // <--- NEW: استدعاء دالة تحديث الكاميرا اليدوية
-    controls.update(); // <--- مهم جداً: تحديث OrbitControls في كل إطار (بعد تحديث الموضع اليدوي)
+    updateCameraPosition();
+    controls.update();
     
     renderer.render(scene, camera);
 }
@@ -270,47 +272,26 @@ animate();
 
 // --- عناصر التحكم باللوحة المفاتيح (مستمعي الأحداث) ---
 document.addEventListener('keydown', (event) => {
-    // <--- NEW: إعادة قسم التحكم بالكاميرا
     switch (event.key.toLowerCase()) {
-        case 'w':
-            keyState.w = true;
-            break;
-        case 's':
-            keyState.s = true;
-            break;
-        case 'a':
-            keyState.a = true;
-            break;
-        case 'd':
-            keyState.d = true;
-            break;
-        case 'q': // جديد: Q للأعلى
-            keyState.q = true;
-            break;
-        case 'e': // جديد: E للأسفل
-            keyState.e = true;
-            break;
-        case 'arrowup': // لا يزال يعمل
-            keyState.arrowUp = true;
-            break;
-        case 'arrowdown': // لا يزال يعمل
-            keyState.arrowDown = true;
-            break;
+        case 'w': keyState.w = true; break;
+        case 's': keyState.s = true; break;
+        case 'a': keyState.a = true; break;
+        case 'd': keyState.d = true; break;
+        case 'q': keyState.q = true; break;
+        case 'e': keyState.e = true; break;
+        case 'arrowup': keyState.arrowUp = true; break;
+        case 'arrowdown': keyState.arrowDown = true; break;
     }
 
-    // الزر 'f' للقفز (Jump)
     if (event.key === 'f' || event.key === 'F') {
         if (!simulationStarted) { 
             simulationStarted = true;
-            // airplaneFlying = false; 
-            // airplane.visible = false; 
             console.log("Skydiver jumped!");
             skydiverVelocity.z = -airplaneSpeed; 
             skydiverVelocity.x = 0; 
         }
     }
 
-    // الزر 'o' لفتح المظلة (Open Parachute)
     if (event.key === 'o' || event.key === 'O') {
         if (simulationStarted && !isParachuteOpen) { 
             isParachuteOpen = true;
@@ -322,37 +303,18 @@ document.addEventListener('keydown', (event) => {
 });
 
 document.addEventListener('keyup', (event) => {
-    // <--- NEW: إعادة قسم التحكم بالكاميرا
     switch (event.key.toLowerCase()) {
-        case 'w':
-            keyState.w = false;
-            break;
-        case 's':
-            keyState.s = false;
-            break;
-        case 'a':
-            keyState.a = false;
-            break;
-        case 'd':
-            keyState.d = false;
-            break;
-        case 'q':
-            keyState.q = false;
-            break;
-        case 'e':
-            keyState.e = false;
-            break;
-        case 'arrowup':
-            keyState.arrowUp = false;
-            break;
-        case 'arrowdown':
-            keyState.arrowDown = false;
-            break;
+        case 'w': keyState.w = false; break;
+        case 's': keyState.s = false; break;
+        case 'a': keyState.a = false; break;
+        case 'd': keyState.d = false; break;
+        case 'q': keyState.q = false; break;
+        case 'e': keyState.e = false; break;
+        case 'arrowup': keyState.arrowUp = false; break;
+        case 'arrowdown': keyState.arrowDown = false; break;
     }
 });
 
-
-// --- التعامل مع تغيير حجم النافذة ---
 window.addEventListener('resize', () => {
     camera.aspect = window.innerWidth / window.innerHeight;
     camera.updateProjectionMatrix();
