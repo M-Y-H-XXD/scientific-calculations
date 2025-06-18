@@ -1,34 +1,46 @@
 
 // import { createNoise2D } from 'simplex-noise';
 // import * as THREE from 'three';
+// import { PMREMGenerator } from 'three';
 // import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
+// import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+// import { RGBELoader } from 'three/examples/jsm/loaders/RGBELoader.js';
+
+// console.log("Value of PMREMGenerator:", PMREMGenerator);
 
 // // --- إعدادات المشهد الأساسية ---
 // const scene = new THREE.Scene();
+// // ***** هنا تضاف خاصية الضباب للمشهد *****cce0ff
+// // ***** هذا هو السطر الجديد للضباب الأسي *****  
+// //3674B5
+// scene.fog = new THREE.FogExp2(0x3674B5, 0.0003); // لون الضباب، وكثافة الضباب
+// // ... بقية كود إعدادات الرندر والكاميرا ...
 // const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 2000);
-// const renderer = new THREE.WebGLRenderer({ antialias: true }); 
+// const renderer = new THREE.WebGLRenderer({ antialias: true });
 // renderer.setSize(window.innerWidth, window.innerHeight);
 // renderer.setPixelRatio(window.devicePixelRatio);
 // renderer.outputColorSpace = THREE.SRGBColorSpace;
+// renderer.shadowMap.enabled = true;
+// renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+// renderer.toneMapping = THREE.ACESFilmicToneMapping;
+// renderer.toneMappingExposure = 0.3;
 // document.body.appendChild(renderer.domElement);
 
 // // --- تهيئة OrbitControls ---
 // const controls = new OrbitControls(camera, renderer.domElement);
 // controls.enableDamping = true;
 // controls.dampingFactor = 0.05;
-
 // controls.enablePan = false;
 // controls.enableZoom = true;
-
 // controls.screenSpacePanning = false;
 // controls.maxPolarAngle = Math.PI / 2;
-// controls.target.set(0, 250, 0);
-// controls.rotateSpeed = 0.2; // سرعة دوران الكاميرا بالماوس (تم إبطاءها)
+// controls.target.set(0, 500, 0);
+// controls.rotateSpeed = 0.2;
 
-// // --- الأضواء ---
-// const ambientLight = new THREE.AmbientLight(0x404040, 2);
+// // --- الأضواء (قللت الشدة لأن الـ environment map ستوفر إضاءة) ---
+// const ambientLight = new THREE.AmbientLight(0x404040, 0.5);
 // scene.add(ambientLight);
-// const directionalLight = new THREE.DirectionalLight(0xffffff, 1.5);
+// const directionalLight = new THREE.DirectionalLight(0xffffff, 0.3);
 // directionalLight.position.set(200, 500, 200);
 // directionalLight.castShadow = true;
 // directionalLight.shadow.mapSize.width = 1024;
@@ -40,17 +52,63 @@
 // directionalLight.shadow.camera.top = 500;
 // directionalLight.shadow.camera.bottom = -500;
 // scene.add(directionalLight);
-// renderer.shadowMap.enabled = true;
 
-// // --- المواد ---
-// const skydiverMaterial = new THREE.MeshStandardMaterial({ color: 0xff0000, roughness: 0.5, metalness: 0.1 });
-// const airplaneMaterial = new THREE.MeshStandardMaterial({ color: 0xaaaaaa, roughness: 0.7, metalness: 0.3 });
-// const parachuteMaterial = new THREE.MeshStandardMaterial({ color: 0x00ffff, side: THREE.DoubleSide, transparent: true, opacity: 0.8 });
+// // --- إعداد Environment Map من ملف HDR ---
+// const pmremGenerator = new PMREMGenerator(renderer);
+// pmremGenerator.compileEquirectangularShader();
 
+// new RGBELoader()
+//     .setPath('/assets/hdri/')
+//     .load('overcast_soil_puresky_4k.hdr', function (texture) {
+//         const envMap = pmremGenerator.fromEquirectangular(texture).texture;
+//         scene.environment = envMap;
+//         scene.background = envMap;
+//         texture.dispose();
+//         pmremGenerator.dispose();
+//         console.log("HDR environment map loaded and applied!");
+//     },
+//     function (xhr) {
+//         console.log('HDR ' + (xhr.loaded / xhr.total * 100) + '% loaded');
+//     },
+//     function (error) {
+//         console.error('An error occurred while loading the HDR environment map:', error);
+//     }
+// );
 // // --- إنشاء الأرض (تضاريس باستخدام Simplex Noise) ---
-// const terrainWidth = 1000;
-// const terrainDepth = 1000;
-// const terrainResolution = 128; 
+// const terrainWidth = 10000;
+// const terrainDepth = 10000;
+// // --- تهيئة محمل الأنسجة وإعداداتها ---
+// const textureLoader = new THREE.TextureLoader();
+
+// // ***** تحديث هذه الأسطر لأسماء ملفاتك الجديدة *****
+// const terrainBaseColorMap = textureLoader.load('/assets/textures/rocky_terrain_02_diff_2k.jpg');
+// const terrainNormalMap = textureLoader.load('/assets/textures/rocky_terrain_02_nor_gl_2k.png');
+// const terrainRoughnessMap = textureLoader.load('/assets/textures/rocky_terrain_02_rough_2k.png');
+// const terrainAOMap = textureLoader.load('/assets/textures/rocky_terrain_02_ao_2k.png'); // إضافة Ambient Occlusion Map
+
+// // إعدادات تكرار النسيج
+// // ستحتاج لضبط 'repeat factor' بناءً على مدى كبر أو صغر الصخور التي تريدها
+// // ابدأ بقيمة مثل 200 أو 500 أو 1000 وجرّب
+// const repeatFactor = 500; // ***** هذه القيمة هي التي ستتحكم في حجم تكرار Texture *****
+
+// terrainBaseColorMap.wrapS = THREE.RepeatWrapping;
+// terrainBaseColorMap.wrapT = THREE.RepeatWrapping;
+// terrainBaseColorMap.repeat.set(terrainWidth / repeatFactor, terrainDepth / repeatFactor);
+
+// terrainNormalMap.wrapS = THREE.RepeatWrapping;
+// terrainNormalMap.wrapT = THREE.RepeatWrapping;
+// terrainNormalMap.repeat.set(terrainWidth / repeatFactor, terrainDepth / repeatFactor);
+
+// terrainRoughnessMap.wrapS = THREE.RepeatWrapping;
+// terrainRoughnessMap.wrapT = THREE.RepeatWrapping;
+// terrainRoughnessMap.repeat.set(terrainWidth / repeatFactor, terrainDepth / repeatFactor);
+
+// terrainAOMap.wrapS = THREE.RepeatWrapping;
+// terrainAOMap.wrapT = THREE.RepeatWrapping;
+// terrainAOMap.repeat.set(terrainWidth / repeatFactor, terrainDepth / repeatFactor);
+
+
+// const terrainResolution = 128;
 // const terrainMaxHeight = 50;
 
 // const terrainGeometry = new THREE.PlaneGeometry(terrainWidth, terrainDepth, terrainResolution - 1, terrainResolution - 1);
@@ -68,115 +126,274 @@
 // }
 // terrainGeometry.computeVertexNormals();
 
-// const terrainMaterial = new THREE.MeshStandardMaterial({ color: 0x228B22, roughness: 0.8, metalness: 0 });
+// // const terrainMaterial = new THREE.MeshStandardMaterial({ color: 0x228B22, roughness: 0.8, metalness: 0 });
+// // const terrain = new THREE.Mesh(terrainGeometry, terrainMaterial);
+// // terrain.receiveShadow = true;
+// // scene.add(terrain);
+// const terrainMaterial = new THREE.MeshStandardMaterial({
+//     map: terrainBaseColorMap,      // نسيج اللون الأساسي (الخريطة المنتشرة)
+//     normalMap: terrainNormalMap,   // نسيج Normal Map
+//     roughnessMap: terrainRoughnessMap, // نسيج Roughness Map
+//     aoMap: terrainAOMap,           // نسيج Ambient Occlusion Map
+//     // metalness: 0, // عادة ما يكون 0 للأرض/الصخور، يمكنك الاحتفاظ به إذا كنت تريده
+//     // roughness: 1.0, // هذه القيمة يمكن أن تعين قيمة عامة، ولكن roughnessMap الآن هي المسيطرة
+// });
+
+// // يمكنك ضبط aoMapIntensity إذا لزم الأمر للتحكم في تأثير الظلال
+// terrainMaterial.aoMapIntensity = 1.0; // القيمة الافتراضية 1، يمكن تقليلها إذا كانت الظلال قوية جدًا
+
 // const terrain = new THREE.Mesh(terrainGeometry, terrainMaterial);
 // terrain.receiveShadow = true;
 // scene.add(terrain);
 
-// // --- إنشاء المظلي (المكعب) ---
-// const skydiverHeight = 2; 
-// const skydiverGeometry = new THREE.BoxGeometry(2, skydiverHeight, 2); 
-// const skydiver = new THREE.Mesh(skydiverGeometry, skydiverMaterial);
-// skydiver.castShadow = true;
-// skydiver.visible = true;
-// scene.add(skydiver);
+// // --- المتغيرات للموديلات التي سيتم تحميلها ---
+// let skydiverVisualGroup = null; // ***** تم التغيير: الحاوية البصرية للمظلي *****
+// let loadedSkydiverModel = null;
+// let airplane = null;
+// let parachute = null; // سيشير إلى LoadedParachuteModel
 
-// // --- إنشاء المظلة (نموذج مخروطي) ---
-// const parachuteGeometry = new THREE.ConeGeometry(8, 2, 32);
-// parachuteGeometry.rotateX(Math.PI);
-// const parachute = new THREE.Mesh(parachuteGeometry, parachuteMaterial);
-// parachute.visible = false;
-// parachute.castShadow = true;
-// scene.add(parachute);
+// let loadedHelicopterModel = null;
+// let loadedParachuteModel = null;
+// function attachParachuteToSkydiver() {
+//     // تحقق من أن كلاهما موجود قبل المتابعة
+//     if (loadedSkydiverModel && loadedParachuteModel) {
+//         // إذا لم تكن المظلة مضافة بالفعل، قم بإضافتها
+//         // يمكن أن يحدث هذا التحديث عدة مرات إذا لم يكن لديك منطق لمنعه
+//         // ولكن لا يضر في هذه الحالة.
+//         if (!loadedSkydiverModel.children.includes(loadedParachuteModel)) {
+//             loadedSkydiverModel.add(loadedParachuteModel);
+//             console.log("Parachute attached to Skydiver model via helper function.");
+//         }
+        
+//         // ***** هذا هو المكان الوحيد والمضمون لضبط الموضع والدوران *****
+//         // هذه هي القيم التي يجب أن تتلاعب بها
+//         // استخدم قيمًا صغيرة جدًا لأن مقياس المظلة كبير جدًا (10000)
+//         // 0.01 تعني 100 وحدة في مساحة العالم (10000 * 0.01)
+//         // 0.001 تعني 10 وحدات في مساحة العالم
+//         loadedParachuteModel.position.set(0, -375, 180); // جرب هذه القيم الدقيقة جدًا
+//         loadedParachuteModel.rotation.x = -Math.PI; // دوران عادة ما يكون ضرورياً
+//         loadedParachuteModel.rotation.y = 0 ; // دوران إضافي قد تحتاجه
+//         loadedParachuteModel.rotation.z = Math.PI; // لضبط الانحراف
 
-// // --- إنشاء الطائرة (تمثيل بسيط كمكعب) ---
-// const airplaneGeometry = new THREE.BoxGeometry(15, 4, 4);
-// const airplane = new THREE.Mesh(airplaneGeometry, airplaneMaterial);
-// airplane.castShadow = true;
-// scene.add(airplane);
+//         // ***** اجعل المظلة مرئية دائمًا لغرض التصحيح *****
+//         loadedParachuteModel.visible = false; 
+       
+//     }
+// }
+
+
+// // --- تحميل نموذج GLTF للمظلي ---
+// const skydiverLoader = new GLTFLoader();
+// skydiverLoader.load(
+//     '/assets/skydiver_model/scene.gltf',
+//     function (gltf) {
+//         loadedSkydiverModel = gltf.scene; // النموذج الفعلي
+
+//         // ***** جديد: إنشاء مجموعة بصرية كحاوية للمظلي *****
+//         skydiverVisualGroup = new THREE.Object3D();
+//         skydiverVisualGroup.add(loadedSkydiverModel); // اجعل النموذج الفعلي ابنًا للمجموعة
+
+//         // ***** جديد: تطبيق الإزاحة على النموذج الفعلي داخل المجموعة *****
+//         // هذه هي القيمة التي ستحتاج إلى تعديلها بالمحاولة والخطأ
+//         // قيمة سالبة لتحريك المظلي بصرياً للأسفل داخل مجموعته.
+//         // قيمة موجبة لتحريك المظلي بصرياً للأعلى داخل مجموعته.
+//         // ابدأ بقيمة صغيرة مثل -10 أو -50، ثم اضبطها.
+//         loadedSkydiverModel.position.y = -20; // مثال: إزاحة المظلي 10 وحدات للأسفل بالنسبة لنقطة أصله
+       
+       
+//         loadedSkydiverModel.position.z=-10;
+//         loadedSkydiverModel.scale.set(0.1, 0.1, 0.1); // طبق المقياس على النموذج الفعلي
+        
+//         loadedSkydiverModel.traverse((node) => { // Traverse النموذج الفعلي
+//             if (node.isMesh) {
+//                 node.castShadow = true;
+//                 node.receiveShadow = true;
+//             }
+//         });
+
+        
+//        // skydiverVisualGroup.add(loadedSkydiverModel);
+//         // ***** جديد: أضف المجموعة البصرية إلى المشهد *****
+//         scene.add(skydiverVisualGroup);
+
+//         // ***** جديد: عين الموضع الأولي للمجموعة البصرية *****
+//         skydiverVisualGroup.position.copy(airplaneInitialPosition);
+//         skydiverPosition.copy(airplaneInitialPosition); // تحديث متجه الفيزياء
+
+//         console.log("Skydiver GLTF model loaded and grouped successfully!");
+//         attachParachuteToSkydiver();
+     
+//     },
+//     function (xhr) {
+//         console.log('Skydiver ' + (xhr.loaded / xhr.total * 100) + '% loaded');
+//     },
+//     function (error) {
+//         console.error('An error occurred while loading the skydiver GLTF model:', error);
+//     }
+// );
+
+// // --- تحميل نموذج GLTF للمروحية (الطائرة) ---
+// const honda_haLoader = new GLTFLoader();
+// honda_haLoader.load(
+//     '/assets/honda_ha/scene.gltf',
+//     function (gltf) {
+//         loadedHelicopterModel = gltf.scene;
+//         loadedHelicopterModel.scale.set(1, 1, 1);
+//         loadedHelicopterModel.rotation.y = -Math.PI/2;
+
+//         loadedHelicopterModel.traverse((node) => {
+//             if (node.isMesh) {
+//                 node.castShadow = true;
+//                 node.receiveShadow = true;
+//             }
+//         });
+
+//         airplane = loadedHelicopterModel;
+//         scene.add(airplane);
+//         airplane.position.copy(airplaneInitialPosition);
+
+//         console.log("Helicopter GLTF model loaded successfully!");
+//     },
+//     function (xhr) {
+//         console.log('Helicopter ' + (xhr.loaded / xhr.total * 100) + '% loaded');
+//     },
+//     function (error) {
+//         console.error('An error occurred while loading the honda_ha GLTF model:', error);
+//     }
+// );
+
+// // --- تحميل نموذج GLTF للمظلة ---
+// const parachuteLoader = new GLTFLoader();
+// parachuteLoader.load(
+//     '/assets/parachute/scene.gltf',
+//     function (gltf) {
+//         loadedParachuteModel = gltf.scene;
+//         loadedParachuteModel.scale.set(4250, 4250, 4250);
+
+//         loadedParachuteModel.traverse((node) => {
+//             if (node.isMesh) {
+//                 node.castShadow = true;
+//                 node.receiveShadow = true;
+//             }
+//         });
+
+//         parachute = loadedParachuteModel; // هذا المتغير يشير الآن إلى النموذج الفعلي للمظلة
+//         attachParachuteToSkydiver();
+      
+
+//         console.log("Parachute GLTF model loaded successfully!");
+//     },
+//     function (xhr) {
+//         console.log('Parachute ' + (xhr.loaded / xhr.total * 100) + '% loaded');
+//     },
+//     function (error) {
+//         console.error('An error occurred while loading the parachute GLTF model:', error);
+//     }
+// );
 
 // // --- إعدادات المحاكاة الفيزيائية ---
-// const G = 9.81; 
-// const RHO = 1.225; 
-// const DT = 0.016; 
+// const G = 9.81;
+// const RHO = 1.225;
+// const DT = 0.016;
+// // ***** جديد: متغيرات جديدة للتحكم في شدة ميلان المظلي *****
+// const MAX_SKYDIVER_TILT_ANGLE = Math.PI / 8; // أقصى زاوية ميلان (22.5 درجة)
+// const WIND_TILT_SENSITIVITY = 0.01; // مدى حساسية المظلي للرياح (كلما زادت القيمة زاد الميلان)
+// const TILT_LERP_FACTOR = 0.05; // عامل التنعيم لعودة المظلي لوضعه الطبيعي (أو للاستجابة)
 
-// let skydiverMass = 75; 
-// let skydiverPosition = new THREE.Vector3();
+// let skydiverMass = 100;
+// let skydiverPosition = new THREE.Vector3(); // هذا هو متجه الموضع الفيزيائي
 
 // let skydiverVelocity = new THREE.Vector3(0, 0, 0);
 // let skydiverAcceleration = new THREE.Vector3(0, 0, 0);
 
-// let CD_freefall = 0.7; 
+// let CD_freefall = 0.7;
 // let A_freefall = 0.8;
-// let CD_parachute = 1.4; 
-// let A_parachute = 25; 
+// let CD_parachute = 1.4;
+// let A_parachute = 25;
 
-// let windSpeed = new THREE.Vector3(5, 0, 0); 
-// const MAX_WIND_SPEED_MAGNITUDE = 15; 
-// const WIND_CHANGE_RATE = 0.5; // تم تعديل الاسم ليعكس التغير في السرعة لكل ضغطة
+// let windSpeed = new THREE.Vector3(5, 0, 0);
+// const MAX_WIND_SPEED_MAGNITUDE = 35;
+// const WIND_CHANGE_RATE = 0.5;
 
 // let isParachuteOpen = false;
-// let parachuteOpenAltitude = 100; 
-
+// let parachuteOpenAltitude = 100;
+// let hasLanded = false; // جديد: لتتبع ما إذا كان المظلي قد هبط على الأرض
 // let simulationStarted = false;
-// let airplaneFlying = true;
+// // ***** هنا هو المكان الصحيح لتعريف skydiverCollisionOffset *****
+// const skydiverCollisionOffset = 30; // قم بتعديل هذه القيمة يدويًا لاحقًا إذا لزم الأمر
+
+// // ===== إضافة متغيرات للتباطؤ التدريجي للمظلة =====
+// let isParachuteOpening = false;
+// let parachuteOpeningProgress = 0;
+// const PARACHUTE_OPENING_DURATION = 1.5;
 
 // // إعدادات حركة الطائرة
 // const airplaneInitialPosition = new THREE.Vector3(0, 500, 300);
-// const airplaneSpeed = 20;
+// const airplaneSpeed = 70;
 
-// // تعيين المواقع الأولية للكائنات
-// airplane.position.copy(airplaneInitialPosition);
-// skydiver.position.copy(airplaneInitialPosition);
-// skydiverPosition.copy(airplaneInitialPosition); 
-
-// camera.position.set(0, 550, 400); 
+// camera.position.set(0, 550, 400);
 
 // // --- إعادة تعريف متغيرات التحكم اليدوية بالكاميرا ---
-// const cameraSpeed = 100; 
+// const cameraSpeed = 100;
 // const keyState = {
-//     w: false, s: false, a: false, d: false, // تحكم بالكاميرا
-//     q: false, e: false, // تحكم بالكاميرا عمودياً (الآن هي الوحيدة لارتفاع الكاميرا)
-//     arrowUp: false, arrowDown: false, // تحكم باتجاه الرياح Z
-//     arrowLeft: false, arrowRight: false, // تحكم باتجاه الرياح X
-//     z: false, // لزيادة سرعة الرياح في الاتجاه الحالي
-//     x: false  // لتقليل سرعة الرياح في الاتجاه الحالي
+//     w: false, s: false, a: false, d: false,
+//     q: false, e: false,
+//     arrowUp: false, arrowDown: false,
+//     arrowLeft: false, arrowRight: false,
+//     z: false,
+//     x: false
 // };
 
 // // --- تعريف Raycaster للتعامل مع التصادمات ---
 // const raycaster = new THREE.Raycaster();
-// const down = new THREE.Vector3(0, -1, 0); 
+// const down = new THREE.Vector3(0, -1, 0);
 
 // // --- وظيفة تحديث الفيزياء ---
 // function updatePhysics() {
-//     if (simulationStarted) { 
-//         let currentCD = isParachuteOpen ? CD_parachute : CD_freefall; 
-//         let currentA = isParachuteOpen ? A_parachute : A_freefall; 
+//     // ***** تم التغيير: استخدام skydiverVisualGroup للتحقق من وجود المظلي بصريًا *****
+//     if (!skydiverVisualGroup) return;
 
-//         // --- حساب القوى المؤثرة ---
+//     if (simulationStarted) {
+//         // تحديث تقدم فتح المظلة
+//         if (isParachuteOpening) {
+//             parachuteOpeningProgress += DT / PARACHUTE_OPENING_DURATION;
+//             if (parachuteOpeningProgress >= 1) {
+//                 parachuteOpeningProgress = 1;
+//                 isParachuteOpening = false;
+//                 isParachuteOpen = true;
+//                 console.log("Parachute opened fully!");
+//             }
+//         }
 
-//         // 1. قوة الجاذبية
+//         // حساب قيم CD و A بناءً على حالة المظلة
+//         let currentCD;
+//         let currentA;
+
+//         if (isParachuteOpen) {
+//             currentCD = CD_parachute;
+//             currentA = A_parachute;
+//         } else if (isParachuteOpening) {
+//             currentCD = CD_freefall + (CD_parachute - CD_freefall) * parachuteOpeningProgress;
+//             currentA = A_freefall + (A_parachute - A_freefall) * parachuteOpeningProgress;
+//         } else {
+//             currentCD = CD_freefall;
+//             currentA = A_freefall;
+//         }
+
 //         const gravityForce = new THREE.Vector3(0, -skydiverMass * G, 0);
-
-//         // 2. قوة مقاومة الهواء (السحب) - محسوبة بالنسبة لسرعة المظلي بالنسبة للهواء (تتضمن الرياح)
-//         const relativeAirVelocity = skydiverVelocity.clone().sub(windSpeed); 
-//         const relativeSpeedSq = relativeAirVelocity.lengthSq(); 
-//         const dragMagnitude = 0.5 * RHO * relativeSpeedSq * currentCD * currentA; 
+//         const relativeAirVelocity = skydiverVelocity.clone().sub(windSpeed);
+//         const relativeSpeedSq = relativeAirVelocity.lengthSq();
+//         const dragMagnitude = 0.5 * RHO * relativeSpeedSq * currentCD * currentA;
 //         const dragForce = relativeAirVelocity.clone().normalize().multiplyScalar(-dragMagnitude);
 
-//         // 3. القوة المحصلة
 //         const totalForce = new THREE.Vector3();
 //         totalForce.add(gravityForce);
-//         totalForce.add(dragForce); 
+//         totalForce.add(dragForce);
 
-//         // حساب التسارع
 //         skydiverAcceleration.copy(totalForce).divideScalar(skydiverMass);
-
-//         // خطوة تحديث السرعة والموقع (تكامل أويلر الصريح)
 //         skydiverVelocity.add(skydiverAcceleration.clone().multiplyScalar(DT));
 //         skydiverPosition.add(skydiverVelocity.clone().multiplyScalar(DT));
 
-//         // اكتشاف التصادم باستخدام Raycasting مع الأرض
 //         raycaster.set(skydiverPosition, down);
 //         const intersects = raycaster.intersectObject(terrain);
 
@@ -184,23 +401,42 @@
 //             const collisionPoint = intersects[0].point;
 //             const groundHeightAtSkydiver = collisionPoint.y;
 
-//             if (skydiverPosition.y - (skydiverHeight / 2) <= groundHeightAtSkydiver) {
-//                 skydiverPosition.y = groundHeightAtSkydiver + (skydiverHeight / 2);
-//                 skydiverVelocity.set(0, 0, 0); 
-//                 skydiverAcceleration.set(0, 0, 0); 
-//                 simulationStarted = false; 
+//             if (skydiverPosition.y - skydiverCollisionOffset <= groundHeightAtSkydiver) {
+//                 skydiverPosition.y = groundHeightAtSkydiver + skydiverCollisionOffset;
+//                 skydiverVelocity.set(0, 0, 0);
+//                 skydiverAcceleration.set(0, 0, 0);
+//                 simulationStarted = false;
+//                 hasLanded = true; // ***** جديد: المظلي هبط بنجاح *****
 //                 console.log("Skydiver landed safely!");
-//                 parachute.visible = false; 
-//                 skydiver.material.color.set(0x00ff00); 
+
+//                 // ***** جديد: إعادة تعيين دوران المظلي لوضع الوقوف الطبيعي *****
+//                 if (skydiverVisualGroup) {
+//                     skydiverVisualGroup.rotation.set(0, 0, 0); // لإعادة تعيين الميلان والدوران الأفقي إلى الصفر
+//                     // ملاحظة: قد تحتاج لضبط هذا بناءً على اتجاه نموذجك.
+//                     // على سبيل المثال، إذا كان النموذج مقلوبًا عند (0,0,0) قد تحتاج:
+//                     // skydiverVisualGroup.rotation.x = Math.PI; // لعكسه
+//                     // أو إذا كان يواجه الاتجاه الخاطئ:
+//                     // skydiverVisualGroup.rotation.y = Math.PI; // لتدويره 180 درجة
+//                 }
+
+//                 // ... السطر الذي قمت بتعليقه/حذفه لإخفاء المظلة ...
+//             }
+//             // ***** تم التغيير: يجب أن يشير Offset إلى loadedSkydiverModel *****
+//             // هذا يعتمد على حجم نموذج المظلي الفعلي بعد scaling (0.1)
+//             // ستحتاج إلى ضبط هذه القيمة بالدقة بعد رؤية النماذج.
+//             //const skydiverCollisionOffset = loadedSkydiverModel ? (loadedSkydiverModel.scale.y * 100) : 10;
+            
+//             if (skydiverPosition.y - skydiverCollisionOffset <= groundHeightAtSkydiver) {
+//                 skydiverPosition.y = groundHeightAtSkydiver + skydiverCollisionOffset;
+//                 skydiverVelocity.set(0, 0, 0);
+//                 skydiverAcceleration.set(0, 0, 0);
+//                 simulationStarted = false;
+//                 console.log("Skydiver landed safely!");
+//                 // ***** تم التغيير: إخفاء loadedParachuteModel وليس المتغير parachute *****
+//                // if (loadedParachuteModel) loadedParachuteModel.visible = false;
 //             }
 //         }
-        
-//         skydiver.position.copy(skydiverPosition); 
-
-//         if (isParachuteOpen) {
-//             parachute.position.copy(skydiverPosition).add(new THREE.Vector3(0, 5, 0));
-//             parachute.rotation.y += 0.05; 
-//         }
+//         // لا حاجة لـ skydiver.position.copy(skydiverPosition) هنا، لأنه يتم في animate loop
 //     }
 // }
 
@@ -208,7 +444,6 @@
 // function updateWindDirection() {
 //     let windChanged = false;
 
-//     // التحكم في اتجاه الرياح باستخدام الأسهم الأربعة (تعديل X و Z)
 //     if (keyState.arrowLeft) {
 //         windSpeed.x -= WIND_CHANGE_RATE;
 //         windChanged = true;
@@ -217,50 +452,41 @@
 //         windSpeed.x += WIND_CHANGE_RATE;
 //         windChanged = true;
 //     }
-//     if (keyState.arrowUp) { // للتحكم في Z (نحو عمق الشاشة)
+//     if (keyState.arrowUp) {
 //         windSpeed.z -= WIND_CHANGE_RATE;
 //         windChanged = true;
 //     }
-//     if (keyState.arrowDown) { // للتحكم في Z (نحو مقدمة الشاشة)
+//     if (keyState.arrowDown) {
 //         windSpeed.z += WIND_CHANGE_RATE;
 //         windChanged = true;
 //     }
 
-//     // التحكم بقوة الرياح في الاتجاه الحالي
-//     if (keyState.z) { // زيادة سرعة الرياح
+//     if (keyState.z) {
 //         const currentWindMagnitude = windSpeed.length();
 //         if (currentWindMagnitude > 0) {
 //             windSpeed.multiplyScalar((currentWindMagnitude + WIND_CHANGE_RATE) / currentWindMagnitude);
 //         } else {
-//             // إذا كانت الرياح صفر، ابدأها في اتجاه افتراضي (مثلاً X الموجب)
 //             windSpeed.x = WIND_CHANGE_RATE;
 //         }
 //         windChanged = true;
 //     }
-//     if (keyState.x) { // تقليل سرعة الرياح
+//     if (keyState.x) {
 //         const currentWindMagnitude = windSpeed.length();
 //         if (currentWindMagnitude > 0) {
 //             windSpeed.multiplyScalar((currentWindMagnitude - WIND_CHANGE_RATE) / currentWindMagnitude);
-//             if (windSpeed.lengthSq() < (WIND_CHANGE_RATE * 0.1) * (WIND_CHANGE_RATE * 0.1)) { // منع الرياح السلبية الصغيرة جداً
+//             if (windSpeed.lengthSq() < (WIND_CHANGE_RATE * 0.1) * (WIND_CHANGE_RATE * 0.1)) {
 //                 windSpeed.set(0, 0, 0);
 //             }
 //         }
 //         windChanged = true;
 //     }
 
-//     // الحد من سرعة الرياح القصوى للحفاظ على الواقعية
 //     if (windSpeed.length() > MAX_WIND_SPEED_MAGNITUDE) {
 //         windSpeed.setLength(MAX_WIND_SPEED_MAGNITUDE);
 //     }
-
-//     // إذا تغيرت الرياح، اطبع قيمة جديدة في الكونسول للمراقبة
-//     if (windChanged) {
-//         console.log(`Wind Speed: X=${windSpeed.x.toFixed(2)}, Z=${windSpeed.z.toFixed(2)} (Magnitude: ${windSpeed.length().toFixed(2)})`);
-//     }
 // }
 
-
-// // دالة تحديث موضع الكاميرا 
+// // دالة تحديث موضع الكاميرا
 // function updateCameraPosition() {
 //     const cameraDirection = new THREE.Vector3();
 //     camera.getWorldDirection(cameraDirection);
@@ -269,7 +495,6 @@
 //     right.crossVectors(cameraDirection, camera.up);
 //     right.normalize();
 
-//     // التحكم في حركة الكاميرا الأفقية (W, S, A, D)
 //     if (keyState.w) {
 //         camera.position.addScaledVector(cameraDirection, cameraSpeed * DT);
 //         controls.target.addScaledVector(cameraDirection, cameraSpeed * DT);
@@ -288,36 +513,121 @@
 //         controls.target.addScaledVector(right, -cameraSpeed * DT);
 //     }
 
-//     // التحكم في ارتفاع الكاميرا (Q, E فقط الآن)
-//     if (keyState.q) { // لم تعد تستخدم arrowUp
+//     if (keyState.q) {
 //         camera.position.y += cameraSpeed * DT;
 //         controls.target.y += cameraSpeed * DT;
 //     }
-//     if (keyState.e) { // لم تعد تستخدم arrowDown
+//     if (keyState.e) {
 //         camera.position.y -= cameraSpeed * DT;
 //         controls.target.y -= cameraSpeed * DT;
 //     }
 // }
 
+// // وظيفة لتحديث عناصر الإحصائيات في HTML
+// function updateStatsDisplay() {
+//     document.getElementById('skydiver-speed').textContent = skydiverVelocity.length().toFixed(2);
+//     document.getElementById('skydiver-altitude').textContent = skydiverPosition.y.toFixed(2);
+//     document.getElementById('wind-speed').textContent = windSpeed.length().toFixed(2);
+
+//     let directionText;
+//     let finalCompassAngle = 0;
+
+//     if (windSpeed.lengthSq() < 0.1 * 0.1) {
+//         directionText = "Still";
+//     } else {
+//         const directions = ["N", "NE", "E", "SE", "S", "SW", "W", "NW", "N"];
+//         let actualAngleRad = Math.atan2(windSpeed.x, -windSpeed.z);
+//         let actualAngleDeg = THREE.MathUtils.radToDeg(actualAngleRad);
+//         if (actualAngleDeg < 0) {
+//             actualAngleDeg += 360;
+//         }
+//         finalCompassAngle = actualAngleDeg;
+//         const index = Math.round(actualAngleDeg / 45);
+//         directionText = directions[index];
+//     }
+//     document.getElementById('wind-direction').textContent = `${directionText} (${finalCompassAngle.toFixed(0)}°)`;
+// }
+// function updateSkydiverRotationBasedOnWind() {
+//     if (!skydiverVisualGroup) return;
+
+//     // نحصل على سرعة الرياح الأفقية فقط (تجاهل المحور Y)
+//     const currentWindDirection = new THREE.Vector2(windSpeed.x, windSpeed.z);
+//     const windMagnitude = currentWindDirection.length();
+
+//     // إذا كانت هناك رياح ذات قوة ملحوظة
+//     if (windMagnitude > 0.1) { // 0.1 هي قيمة صغيرة لتجنب الميلان عند عدم وجود رياح
+//         // حساب مقدار الميلان بناءً على قوة الرياح
+//         let tiltAmount = THREE.MathUtils.mapLinear(windMagnitude, 0, MAX_WIND_SPEED_MAGNITUDE, 0, MAX_SKYDIVER_TILT_ANGLE);
+//         // يمكنك استخدام هذا بدلاً من Math.min:
+//         // let tiltAmount = Math.min(windMagnitude * WIND_TILT_SENSITIVITY, MAX_SKYDIVER_TILT_ANGLE);
+
+
+//         // الميل حول المحور X (للأمام/الخلف)
+//         // الرياح في Z (الأمام/الخلف) تسبب دوران حول X
+//         // إذا كانت الرياح سالبة (تأتي من الأمام)، الميل يجب أن يكون للخلف (rotation.x سالبة)
+//         // إذا كانت الرياح موجبة (تأتي من الخلف)، الميل يجب أن يكون للأمام (rotation.x موجبة)
+//         const targetRotationX = THREE.MathUtils.clamp(windSpeed.z * WIND_TILT_SENSITIVITY, -MAX_SKYDIVER_TILT_ANGLE, MAX_SKYDIVER_TILT_ANGLE);
+//         skydiverVisualGroup.rotation.x = THREE.MathUtils.lerp(skydiverVisualGroup.rotation.x, targetRotationX, TILT_LERP_FACTOR);
+
+//         // الميل حول المحور Z (للجانب)
+//         // الرياح في X (اليمين/اليسار) تسبب دوران حول Z
+//         // إذا كانت الرياح سالبة (تأتي من اليسار)، الميل يجب أن يكون لليمين (rotation.z موجبة)
+//         // إذا كانت الرياح موجبة (تأتي من اليمين)، الميل يجب أن يكون لليسار (rotation.z سالبة)
+//         const targetRotationZ = THREE.MathUtils.clamp(-windSpeed.x * WIND_TILT_SENSITIVITY, -MAX_SKYDIVER_TILT_ANGLE, MAX_SKYDIVER_TILT_ANGLE);
+//         skydiverVisualGroup.rotation.z = THREE.MathUtils.lerp(skydiverVisualGroup.rotation.z, targetRotationZ, TILT_LERP_FACTOR);
+
+//         // ***** الدوران الأفقي (حول المحور Y) ليواجه اتجاه الرياح *****
+//         // هذا الجزء سيتسبب في أن يلتف المظلي أفقياً لـ "مواجهة" الرياح.
+//         // إذا كنت لا تريد أي دوران أفقي، قم بإزالة هذا الجزء تمامًا.
+//         // const targetRotationY = Math.atan2(currentWindDirection.x, -currentWindDirection.y);
+//         // skydiverVisualGroup.rotation.y = THREE.MathUtils.lerp(skydiverVisualGroup.rotation.y, targetRotationY, TILT_LERP_FACTOR);
+
+//     } else {
+//         // إذا لم تكن هناك رياح قوية، أعد المظلي إلى وضع رأسي تدريجيًا
+//         skydiverVisualGroup.rotation.x = THREE.MathUtils.lerp(skydiverVisualGroup.rotation.x, 0, TILT_LERP_FACTOR);
+//         skydiverVisualGroup.rotation.z = THREE.MathUtils.lerp(skydiverVisualGroup.rotation.z, 0, TILT_LERP_FACTOR);
+//         //skydiverVisualGroup.rotation.y = THREE.MathUtils.lerp(skydiverVisualGroup.rotation.y, 0, TILT_LERP_FACTOR); // هذا لـ Y إذا أردته أن يعود أيضًا
+//     }
+// }
 
 // // حلقة الرسوميات
 // function animate() {
 //     requestAnimationFrame(animate);
 
-//     if (airplaneFlying) { 
+//     if (airplane) {
 //         airplane.position.z -= airplaneSpeed * DT;
-//         if (!simulationStarted) { 
-//             skydiver.position.copy(airplane.position);
-//             skydiverPosition.copy(airplane.position);
-//         }
 //     }
 
-//     updatePhysics(); 
-//     updateWindDirection(); 
-
+//     // ***** تم التغيير: استخدام skydiverVisualGroup هنا *****
+//     // if (!simulationStarted && skydiverVisualGroup && airplane) {
+//     //     skydiverVisualGroup.position.copy(airplane.position);
+//     //     skydiverPosition.copy(airplane.position);
+//     // }
+//     // ***** تم التعديل: المظلي يتبع الطائرة فقط إذا لم تبدأ المحاكاة ولم يهبط بعد *****
+//     if (!simulationStarted && !hasLanded && skydiverVisualGroup && airplane) {
+//         skydiverVisualGroup.position.copy(airplane.position);
+//         skydiverPosition.copy(airplane.position);
+//     }
+//     updatePhysics();
+//     updateWindDirection();
+//     updateSkydiverRotationBasedOnWind(); // ***** استدعِ الدالة الجديدة هنا *****
 //     updateCameraPosition();
 //     controls.update();
-    
+//     updateStatsDisplay();
+
+//     // ***** جديد: بعد تحديث الفيزياء، قم بتحديث موقع المجموعة البصرية *****
+//     if (skydiverVisualGroup) {
+//         skydiverVisualGroup.position.copy(skydiverPosition);
+//     }
+
+//     // ***** جديد: تحديث دوران المجموعة البصرية للمظلي *****
+//     // if (skydiverVisualGroup) {
+//     //     const horizontalVelocity = new THREE.Vector2(skydiverVelocity.x, skydiverVelocity.z);
+//     //     if (horizontalVelocity.lengthSq() > 0.1) {
+//     //         skydiverVisualGroup.rotation.y = Math.atan2(horizontalVelocity.x, horizontalVelocity.y);
+//     //     }
+//     // }
+
 //     renderer.render(scene, camera);
 // }
 
@@ -332,32 +642,42 @@
 //         case 'd': keyState.d = true; break;
 //         case 'q': keyState.q = true; break;
 //         case 'e': keyState.e = true; break;
-//         // تحكم الرياح باستخدام الأسهم الأربعة
 //         case 'arrowleft': keyState.arrowLeft = true; break;
 //         case 'arrowright': keyState.arrowRight = true; break;
-//         case 'arrowup': keyState.arrowUp = true; break; 
+//         case 'arrowup': keyState.arrowUp = true; break;
 //         case 'arrowdown': keyState.arrowDown = true; break;
-//         case 'z': keyState.z = true; break; 
-//         case 'x': keyState.x = true; break; 
+//         case 'z': keyState.z = true; break;
+//         case 'x': keyState.x = true; break;
 //     }
 
 //     // زر 'F' للقفز من الطائرة
 //     if (event.key === 'f' || event.key === 'F') {
-//         if (!simulationStarted) { 
-//             simulationStarted = true;
-//             console.log("Skydiver jumped!");
-//             skydiverVelocity.z = -airplaneSpeed; 
-//             skydiverVelocity.x = 0; 
+//         if (!simulationStarted) {
+//             // ***** تم التغيير: استخدام skydiverVisualGroup هنا *****
+//             if (skydiverVisualGroup) {
+//                 simulationStarted = true;
+//                 hasLanded = false; // ***** جديد: إعادة تعيين حالة الهبوط عند القفز *****
+//                 console.log("Skydiver jumped!");
+//                 skydiverVelocity.z = -airplaneSpeed;
+//                 skydiverVelocity.x = 0;
+//             } else {
+//                 console.warn("Skydiver model not loaded yet. Please wait.");
+//             }
 //         }
 //     }
 
-//     // زر 'O' لفتح المظلة
+//     // ===== تعديل منطق زر 'O' لفتح المظلة تدريجياً =====
 //     if (event.key === 'o' || event.key === 'O') {
-//         if (simulationStarted && !isParachuteOpen) { 
-//             isParachuteOpen = true;
-//             parachute.visible = true;
-//             skydiver.material.color.set(0x0000ff); 
-//             console.log("Parachute opened!");
+//         if (simulationStarted && !isParachuteOpen && !isParachuteOpening) {
+//             // ***** تم التغيير: استخدام loadedParachuteModel هنا *****
+//             if (loadedParachuteModel) {
+//                 isParachuteOpening = true;
+//                 parachuteOpeningProgress = 0;
+//                 loadedParachuteModel.visible = true; // اجعل المظلة مرئية
+//                 console.log("Parachute opening initiated!");
+//             } else {
+//                 console.warn("Parachute model not loaded yet. Please wait.");
+//             }
 //         }
 //     }
 // });
@@ -370,13 +690,12 @@
 //         case 'd': keyState.d = false; break;
 //         case 'q': keyState.q = false; break;
 //         case 'e': keyState.e = false; break;
-//         // تحكم الرياح باستخدام الأسهم الأربعة
 //         case 'arrowleft': keyState.arrowLeft = false; break;
 //         case 'arrowright': keyState.arrowRight = false; break;
-//         case 'arrowup': keyState.arrowUp = false; break; 
+//         case 'arrowup': keyState.arrowUp = false; break;
 //         case 'arrowdown': keyState.arrowDown = false; break;
-//         case 'z': keyState.z = false; break; 
-//         case 'x': keyState.x = false; break; 
+//         case 'z': keyState.z = false; break;
+//         case 'x': keyState.x = false; break;
 //     }
 // });
 
@@ -387,34 +706,42 @@
 // });
 import { createNoise2D } from 'simplex-noise';
 import * as THREE from 'three';
+import { PMREMGenerator } from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+import { RGBELoader } from 'three/examples/jsm/loaders/RGBELoader.js';
+
+console.log("Value of PMREMGenerator:", PMREMGenerator);
 
 // --- إعدادات المشهد الأساسية ---
 const scene = new THREE.Scene();
+scene.fog = new THREE.FogExp2(0x3674B5, 0.0003); // لون الضباب، وكثافة الضباب
 const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 2000);
-const renderer = new THREE.WebGLRenderer({ antialias: true }); 
+const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.setPixelRatio(window.devicePixelRatio);
 renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 0.3;
 document.body.appendChild(renderer.domElement);
 
 // --- تهيئة OrbitControls ---
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true;
 controls.dampingFactor = 0.05;
-
 controls.enablePan = false;
 controls.enableZoom = true;
-
 controls.screenSpacePanning = false;
 controls.maxPolarAngle = Math.PI / 2;
-controls.target.set(0, 250, 0);
-controls.rotateSpeed = 0.2; // سرعة دوران الكاميرا بالماوس (تم إبطاءها)
+controls.target.set(0, 500, 0);
+controls.rotateSpeed = 0.2;
 
-// --- الأضواء ---
-const ambientLight = new THREE.AmbientLight(0x404040, 2);
+// --- الأضواء (قللت الشدة لأن الـ environment map ستوفر إضاءة) ---
+const ambientLight = new THREE.AmbientLight(0x404040, 0.5);
 scene.add(ambientLight);
-const directionalLight = new THREE.DirectionalLight(0xffffff, 1.5);
+const directionalLight = new THREE.DirectionalLight(0xffffff, 0.3);
 directionalLight.position.set(200, 500, 200);
 directionalLight.castShadow = true;
 directionalLight.shadow.mapSize.width = 1024;
@@ -426,17 +753,58 @@ directionalLight.shadow.camera.right = 500;
 directionalLight.shadow.camera.top = 500;
 directionalLight.shadow.camera.bottom = -500;
 scene.add(directionalLight);
-renderer.shadowMap.enabled = true;
 
-// --- المواد ---
-const skydiverMaterial = new THREE.MeshStandardMaterial({ color: 0xff0000, roughness: 0.5, metalness: 0.1 });
-const airplaneMaterial = new THREE.MeshStandardMaterial({ color: 0xaaaaaa, roughness: 0.7, metalness: 0.3 });
-const parachuteMaterial = new THREE.MeshStandardMaterial({ color: 0x00ffff, side: THREE.DoubleSide, transparent: true, opacity: 0.8 });
+// --- إعداد Environment Map من ملف HDR ---
+const pmremGenerator = new PMREMGenerator(renderer);
+pmremGenerator.compileEquirectangularShader();
 
+new RGBELoader()
+    .setPath('/assets/hdri/')
+    .load('overcast_soil_puresky_4k.hdr', function (texture) {
+        const envMap = pmremGenerator.fromEquirectangular(texture).texture;
+        scene.environment = envMap;
+        scene.background = envMap;
+        texture.dispose();
+        pmremGenerator.dispose();
+        console.log("HDR environment map loaded and applied!");
+    },
+    function (xhr) {
+        console.log('HDR ' + (xhr.loaded / xhr.total * 100) + '% loaded');
+    },
+    function (error) {
+        console.error('An error occurred while loading the HDR environment map:', error);
+    }
+);
 // --- إنشاء الأرض (تضاريس باستخدام Simplex Noise) ---
-const terrainWidth = 1000;
-const terrainDepth = 1000;
-const terrainResolution = 128; 
+const terrainWidth = 10000;
+const terrainDepth = 10000;
+// --- تهيئة محمل الأنسجة وإعداداتها ---
+const textureLoader = new THREE.TextureLoader();
+
+const terrainBaseColorMap = textureLoader.load('/assets/textures/rocky_terrain_02_diff_2k.jpg');
+const terrainNormalMap = textureLoader.load('/assets/textures/rocky_terrain_02_nor_gl_2k.png');
+const terrainRoughnessMap = textureLoader.load('/assets/textures/rocky_terrain_02_rough_2k.png');
+const terrainAOMap = textureLoader.load('/assets/textures/rocky_terrain_02_ao_2k.png'); // إضافة Ambient Occlusion Map
+
+const repeatFactor = 500; // ***** هذه القيمة هي التي ستتحكم في حجم تكرار Texture *****
+
+terrainBaseColorMap.wrapS = THREE.RepeatWrapping;
+terrainBaseColorMap.wrapT = THREE.RepeatWrapping;
+terrainBaseColorMap.repeat.set(terrainWidth / repeatFactor, terrainDepth / repeatFactor);
+
+terrainNormalMap.wrapS = THREE.RepeatWrapping;
+terrainNormalMap.wrapT = THREE.RepeatWrapping;
+terrainNormalMap.repeat.set(terrainWidth / repeatFactor, terrainDepth / repeatFactor);
+
+terrainRoughnessMap.wrapS = THREE.RepeatWrapping;
+terrainRoughnessMap.wrapT = THREE.RepeatWrapping;
+terrainRoughnessMap.repeat.set(terrainWidth / repeatFactor, terrainDepth / repeatFactor);
+
+terrainAOMap.wrapS = THREE.RepeatWrapping;
+terrainAOMap.wrapT = THREE.RepeatWrapping;
+terrainAOMap.repeat.set(terrainWidth / repeatFactor, terrainDepth / repeatFactor);
+
+const terrainResolution = 128;
 const terrainMaxHeight = 50;
 
 const terrainGeometry = new THREE.PlaneGeometry(terrainWidth, terrainDepth, terrainResolution - 1, terrainResolution - 1);
@@ -454,147 +822,274 @@ for (let i = 0, j = 0; i < vertices.length; i++, j += 3) {
 }
 terrainGeometry.computeVertexNormals();
 
-const terrainMaterial = new THREE.MeshStandardMaterial({ color: 0x228B22, roughness: 0.8, metalness: 0 });
+const terrainMaterial = new THREE.MeshStandardMaterial({
+    map: terrainBaseColorMap,
+    normalMap: terrainNormalMap,
+    roughnessMap: terrainRoughnessMap,
+    aoMap: terrainAOMap,
+});
+
+terrainMaterial.aoMapIntensity = 1.0;
+
 const terrain = new THREE.Mesh(terrainGeometry, terrainMaterial);
 terrain.receiveShadow = true;
 scene.add(terrain);
 
-// --- إنشاء المظلي (المكعب) ---
-const skydiverHeight = 2; 
-const skydiverGeometry = new THREE.BoxGeometry(2, skydiverHeight, 2); 
-const skydiver = new THREE.Mesh(skydiverGeometry, skydiverMaterial);
-skydiver.castShadow = true;
-skydiver.visible = true;
-scene.add(skydiver);
+// --- المتغيرات للموديلات التي سيتم تحميلها ---
+let skydiverVisualGroup = null; // الحاوية البصرية للمظلي
+let loadedSkydiverModel = null;
+let airplane = null;
+let parachute = null; // سيشير إلى LoadedParachuteModel (هذا المتغير أصبح غير ضروري لأنه لدينا loadedParachuteModel مباشرة)
 
-// --- إنشاء المظلة (نموذج مخروطي) ---
-const parachuteGeometry = new THREE.ConeGeometry(8, 2, 32);
-parachuteGeometry.rotateX(Math.PI);
-const parachute = new THREE.Mesh(parachuteGeometry, parachuteMaterial);
-parachute.visible = false;
-parachute.castShadow = true;
-scene.add(parachute);
+let loadedHelicopterModel = null;
+let loadedParachuteModel = null;
 
-// --- إنشاء الطائرة (تمثيل بسيط كمكعب) ---
-const airplaneGeometry = new THREE.BoxGeometry(15, 4, 4);
-const airplane = new THREE.Mesh(airplaneGeometry, airplaneMaterial);
-airplane.castShadow = true;
-scene.add(airplane);
+function attachParachuteToSkydiver() {
+    if (loadedSkydiverModel && loadedParachuteModel) {
+        if (!loadedSkydiverModel.children.includes(loadedParachuteModel)) {
+            loadedSkydiverModel.add(loadedParachuteModel);
+            console.log("Parachute attached to Skydiver model via helper function.");
+        }
+        
+        loadedParachuteModel.position.set(0, -375, 180); // جرب هذه القيم الدقيقة جدًا
+        loadedParachuteModel.rotation.x = -Math.PI; // دوران عادة ما يكون ضرورياً
+        loadedParachuteModel.rotation.y = 0 ; // دوران إضافي قد تحتاجه
+        loadedParachuteModel.rotation.z = Math.PI; // لضبط الانحراف
+
+        loadedParachuteModel.visible = false; // ابدأ دائماً والمظلة غير مرئية
+    }
+}
+
+
+// --- تحميل نموذج GLTF للمظلي ---
+const skydiverLoader = new GLTFLoader();
+skydiverLoader.load(
+    '/assets/skydiver_model/scene.gltf',
+    function (gltf) {
+        loadedSkydiverModel = gltf.scene;
+
+        skydiverVisualGroup = new THREE.Object3D();
+        skydiverVisualGroup.add(loadedSkydiverModel);
+
+        loadedSkydiverModel.position.y = -20;
+        loadedSkydiverModel.position.z = -10;
+        loadedSkydiverModel.scale.set(0.1, 0.1, 0.1);
+        
+        loadedSkydiverModel.traverse((node) => {
+            if (node.isMesh) {
+                node.castShadow = true;
+                node.receiveShadow = true;
+            }
+        });
+
+        scene.add(skydiverVisualGroup);
+
+        skydiverVisualGroup.position.copy(airplaneInitialPosition);
+        skydiverPosition.copy(airplaneInitialPosition);
+
+        console.log("Skydiver GLTF model loaded and grouped successfully!");
+        attachParachuteToSkydiver();
+    },
+    function (xhr) {
+        console.log('Skydiver ' + (xhr.loaded / xhr.total * 100) + '% loaded');
+    },
+    function (error) {
+        console.error('An error occurred while loading the skydiver GLTF model:', error);
+    }
+);
+
+// --- تحميل نموذج GLTF للمروحية (الطائرة) ---
+const honda_haLoader = new GLTFLoader();
+honda_haLoader.load(
+    '/assets/honda_ha/scene.gltf',
+    function (gltf) {
+        loadedHelicopterModel = gltf.scene;
+        loadedHelicopterModel.scale.set(1, 1, 1);
+        loadedHelicopterModel.rotation.y = -Math.PI/2;
+
+        loadedHelicopterModel.traverse((node) => {
+            if (node.isMesh) {
+                node.castShadow = true;
+                node.receiveShadow = true;
+            }
+        });
+
+        airplane = loadedHelicopterModel;
+        scene.add(airplane);
+        airplane.position.copy(airplaneInitialPosition);
+
+        console.log("Helicopter GLTF model loaded successfully!");
+    },
+    function (xhr) {
+        console.log('Helicopter ' + (xhr.loaded / xhr.total * 100) + '% loaded');
+    },
+    function (error) {
+        console.error('An error occurred while loading the honda_ha GLTF model:', error);
+    }
+);
+
+// --- تحميل نموذج GLTF للمظلة ---
+const parachuteLoader = new GLTFLoader();
+parachuteLoader.load(
+    '/assets/parachute/scene.gltf',
+    function (gltf) {
+        loadedParachuteModel = gltf.scene;
+        loadedParachuteModel.scale.set(4250, 4250, 4250);
+
+        loadedParachuteModel.traverse((node) => {
+            if (node.isMesh) {
+                node.castShadow = true;
+                node.receiveShadow = true;
+            }
+        });
+
+        parachute = loadedParachuteModel; // هذا المتغير يشير الآن إلى النموذج الفعلي للمظلة
+        attachParachuteToSkydiver();
+        console.log("Parachute GLTF model loaded successfully!");
+    },
+    function (xhr) {
+        console.log('Parachute ' + (xhr.loaded / xhr.total * 100) + '% loaded');
+    },
+    function (error) {
+        console.error('An error occurred while loading the parachute GLTF model:', error);
+    }
+);
 
 // --- إعدادات المحاكاة الفيزيائية ---
-const G = 9.81; 
-const RHO = 1.225; 
-const DT = 0.016; 
+const G = 9.81;
+const RHO = 1.225;
+const DT = 0.016; // Fixed timestep
 
-let skydiverMass = 75; 
-let skydiverPosition = new THREE.Vector3();
+const MAX_SKYDIVER_TILT_ANGLE = Math.PI / 8; // أقصى زاوية ميلان (22.5 درجة)
+const WIND_TILT_SENSITIVITY = 0.01; // مدى حساسية المظلي للرياح (كلما زادت القيمة زاد الميلان)
+const TILT_LERP_FACTOR = 0.05; // عامل التنعيم لعودة المظلي لوضعه الطبيعي (أو للاستجابة)
 
+let skydiverMass = 100;
+let skydiverPosition = new THREE.Vector3(); // هذا هو متجه الموضع الفيزيائي
 let skydiverVelocity = new THREE.Vector3(0, 0, 0);
 let skydiverAcceleration = new THREE.Vector3(0, 0, 0);
 
-let CD_freefall = 0.7; 
+let CD_freefall = 0.7;
 let A_freefall = 0.8;
-let CD_parachute = 1.4; 
-let A_parachute = 25; 
+let CD_parachute = 1.4;
+let A_parachute = 25;
 
-let windSpeed = new THREE.Vector3(5, 0, 0); 
-const MAX_WIND_SPEED_MAGNITUDE = 15; 
-const WIND_CHANGE_RATE = 0.5; 
+let windSpeed = new THREE.Vector3(5, 0, 0);
+const MAX_WIND_SPEED_MAGNITUDE = 35;
+const WIND_CHANGE_RATE = 0.5;
 
 let isParachuteOpen = false;
-let parachuteOpenAltitude = 100; 
+let parachuteOpenAltitude = 100;
 
+let hasLanded = false; // جديد: لتتبع ما إذا كان المظلي قد هبط على الأرض
 let simulationStarted = false;
-let airplaneFlying = true;
+
+// هذا هو المكان الصحيح لتعريف skydiverCollisionOffset - يجب أن يكون مرة واحدة فقط هنا.
+const skydiverCollisionOffset = 30; // قم بتعديل هذه القيمة يدويًا لاحقًا إذا لزم الأمر
+
+// ===== إضافة متغيرات للتباطؤ التدريجي للمظلة =====
+let isParachuteOpening = false;
+let parachuteOpeningProgress = 0;
+const PARACHUTE_OPENING_DURATION = 1.5;
 
 // إعدادات حركة الطائرة
 const airplaneInitialPosition = new THREE.Vector3(0, 500, 300);
-const airplaneSpeed = 20;
+const airplaneSpeed = 60;
 
-// تعيين المواقع الأولية للكائنات
-airplane.position.copy(airplaneInitialPosition);
-skydiver.position.copy(airplaneInitialPosition);
-skydiverPosition.copy(airplaneInitialPosition); 
-
-camera.position.set(0, 550, 400); 
+camera.position.set(0, 550, 400);
 
 // --- إعادة تعريف متغيرات التحكم اليدوية بالكاميرا ---
-const cameraSpeed = 100; 
+const cameraSpeed = 100;
 const keyState = {
-    w: false, s: false, a: false, d: false, // تحكم بالكاميرا
-    q: false, e: false, // تحكم بالكاميرا عمودياً (الآن هي الوحيدة لارتفاع الكاميرا)
-    arrowUp: false, arrowDown: false, // تحكم باتجاه الرياح Z
-    arrowLeft: false, arrowRight: false, // تحكم باتجاه الرياح X
-    z: false, // لزيادة سرعة الرياح في الاتجاه الحالي
-    x: false  // لتقليل سرعة الرياح في الاتجاه الحالي
+    w: false, s: false, a: false, d: false,
+    q: false, e: false,
+    arrowUp: false, arrowDown: false,
+    arrowLeft: false, arrowRight: false,
+    z: false,
+    x: false
 };
 
 // --- تعريف Raycaster للتعامل مع التصادمات ---
 const raycaster = new THREE.Raycaster();
-const down = new THREE.Vector3(0, -1, 0); 
+const down = new THREE.Vector3(0, -1, 0);
 
 // --- وظيفة تحديث الفيزياء ---
 function updatePhysics() {
-    if (simulationStarted) { 
-        let currentCD = isParachuteOpen ? CD_parachute : CD_freefall; 
-        let currentA = isParachuteOpen ? A_parachute : A_freefall; 
+    // لا تقم بتحديث الفيزياء إذا لم تبدأ المحاكاة أو إذا كان المظلي قد هبط
+    if (!skydiverVisualGroup || !simulationStarted || hasLanded) return; // ***** تم التعديل هنا *****
 
-        // --- حساب القوى المؤثرة ---
-
-        // 1. قوة الجاذبية
-        const gravityForce = new THREE.Vector3(0, -skydiverMass * G, 0);
-
-        // 2. قوة مقاومة الهواء (السحب) - محسوبة بالنسبة لسرعة المظلي بالنسبة للهواء (تتضمن الرياح)
-        const relativeAirVelocity = skydiverVelocity.clone().sub(windSpeed); 
-        const relativeSpeedSq = relativeAirVelocity.lengthSq(); 
-        const dragMagnitude = 0.5 * RHO * relativeSpeedSq * currentCD * currentA; 
-        const dragForce = relativeAirVelocity.clone().normalize().multiplyScalar(-dragMagnitude);
-
-        // 3. القوة المحصلة
-        const totalForce = new THREE.Vector3();
-        totalForce.add(gravityForce);
-        totalForce.add(dragForce); 
-
-        // حساب التسارع
-        skydiverAcceleration.copy(totalForce).divideScalar(skydiverMass);
-
-        // خطوة تحديث السرعة والموقع (تكامل أويلر الصريح)
-        skydiverVelocity.add(skydiverAcceleration.clone().multiplyScalar(DT));
-        skydiverPosition.add(skydiverVelocity.clone().multiplyScalar(DT));
-
-        // اكتشاف التصادم باستخدام Raycasting مع الأرض
-        raycaster.set(skydiverPosition, down);
-        const intersects = raycaster.intersectObject(terrain);
-
-        if (intersects.length > 0) {
-            const collisionPoint = intersects[0].point;
-            const groundHeightAtSkydiver = collisionPoint.y;
-
-            if (skydiverPosition.y - (skydiverHeight / 2) <= groundHeightAtSkydiver) {
-                skydiverPosition.y = groundHeightAtSkydiver + (skydiverHeight / 2);
-                skydiverVelocity.set(0, 0, 0); 
-                skydiverAcceleration.set(0, 0, 0); 
-                simulationStarted = false; 
-                console.log("Skydiver landed safely!");
-                parachute.visible = false; 
-                skydiver.material.color.set(0x00ff00); 
-            }
+    // تحديث تقدم فتح المظلة
+    if (isParachuteOpening) {
+        parachuteOpeningProgress += DT / PARACHUTE_OPENING_DURATION;
+        if (parachuteOpeningProgress >= 1) {
+            parachuteOpeningProgress = 1;
+            isParachuteOpening = false;
+            isParachuteOpen = true;
+            console.log("Parachute opened fully!");
         }
-        
-        skydiver.position.copy(skydiverPosition); 
+    }
 
-        if (isParachuteOpen) {
-            parachute.position.copy(skydiverPosition).add(new THREE.Vector3(0, 5, 0));
-            parachute.rotation.y += 0.05; 
+    // حساب قيم CD و A بناءً على حالة المظلة
+    let currentCD;
+    let currentA;
+
+    if (isParachuteOpen) {
+        currentCD = CD_parachute;
+        currentA = A_parachute;
+    } else if (isParachuteOpening) {
+        currentCD = CD_freefall + (CD_parachute - CD_freefall) * parachuteOpeningProgress;
+        currentA = A_freefall + (A_parachute - A_freefall) * parachuteOpeningProgress;
+    } else {
+        currentCD = CD_freefall;
+        currentA = A_freefall;
+    }
+
+    const gravityForce = new THREE.Vector3(0, -skydiverMass * G, 0);
+    const relativeAirVelocity = skydiverVelocity.clone().sub(windSpeed);
+    const relativeSpeedSq = relativeAirVelocity.lengthSq();
+    const dragMagnitude = 0.5 * RHO * relativeSpeedSq * currentCD * currentA;
+    const dragForce = relativeAirVelocity.clone().normalize().multiplyScalar(-dragMagnitude);
+
+    const totalForce = new THREE.Vector3();
+    totalForce.add(gravityForce);
+    totalForce.add(dragForce);
+
+    skydiverAcceleration.copy(totalForce).divideScalar(skydiverMass);
+    skydiverVelocity.add(skydiverAcceleration.clone().multiplyScalar(DT));
+    skydiverPosition.add(skydiverVelocity.clone().multiplyScalar(DT));
+
+    raycaster.set(skydiverPosition, down);
+    const intersects = raycaster.intersectObject(terrain);
+
+    if (intersects.length > 0) {
+        const collisionPoint = intersects[0].point;
+        const groundHeightAtSkydiver = collisionPoint.y;
+
+        // ***** تأكد أن skydiverCollisionOffset معرّف في النطاق العام (وقد فعلنا ذلك الآن) *****
+        if (skydiverPosition.y - skydiverCollisionOffset <= groundHeightAtSkydiver) {
+            skydiverPosition.y = groundHeightAtSkydiver + skydiverCollisionOffset;
+            skydiverVelocity.set(0, 0, 0);
+            skydiverAcceleration.set(0, 0, 0);
+            simulationStarted = false; // توقف المحاكاة الفيزيائية
+            hasLanded = true; // تعيين حالة الهبوط
+            console.log("Skydiver landed safely!");
+
+            if (skydiverVisualGroup) {
+                skydiverVisualGroup.rotation.set(0, 0, 0); // إعادة تعيين دوران المظلي لوضع الوقوف
+            }
+
+            if (loadedParachuteModel) {
+                loadedParachuteModel.visible = false; // ***** المظلة تختفي عند الهبوط *****
+            }
         }
     }
 }
 
 // وظيفة لتحديث سرعة الرياح بناءً على ضغطات الأسهم
 function updateWindDirection() {
+    // يمكن التحكم في الرياح حتى لو كان المظلي على الأرض، ولكن لن تؤثر عليه
     let windChanged = false;
 
-    // التحكم في اتجاه الرياح باستخدام الأسهم الأربعة (تعديل X و Z)
     if (keyState.arrowLeft) {
         windSpeed.x -= WIND_CHANGE_RATE;
         windChanged = true;
@@ -603,50 +1098,41 @@ function updateWindDirection() {
         windSpeed.x += WIND_CHANGE_RATE;
         windChanged = true;
     }
-    if (keyState.arrowUp) { // للتحكم في Z (نحو عمق الشاشة)
+    if (keyState.arrowUp) {
         windSpeed.z -= WIND_CHANGE_RATE;
         windChanged = true;
     }
-    if (keyState.arrowDown) { // للتحكم في Z (نحو مقدمة الشاشة)
+    if (keyState.arrowDown) {
         windSpeed.z += WIND_CHANGE_RATE;
         windChanged = true;
     }
 
-    // التحكم بقوة الرياح في الاتجاه الحالي
-    if (keyState.z) { // زيادة سرعة الرياح
+    if (keyState.z) {
         const currentWindMagnitude = windSpeed.length();
         if (currentWindMagnitude > 0) {
             windSpeed.multiplyScalar((currentWindMagnitude + WIND_CHANGE_RATE) / currentWindMagnitude);
         } else {
-            // إذا كانت الرياح صفر، ابدأها في اتجاه افتراضي (مثلاً X الموجب)
             windSpeed.x = WIND_CHANGE_RATE;
         }
         windChanged = true;
     }
-    if (keyState.x) { // تقليل سرعة الرياح
+    if (keyState.x) {
         const currentWindMagnitude = windSpeed.length();
         if (currentWindMagnitude > 0) {
             windSpeed.multiplyScalar((currentWindMagnitude - WIND_CHANGE_RATE) / currentWindMagnitude);
-            if (windSpeed.lengthSq() < (WIND_CHANGE_RATE * 0.1) * (WIND_CHANGE_RATE * 0.1)) { // منع الرياح السلبية الصغيرة جداً
+            if (windSpeed.lengthSq() < (WIND_CHANGE_RATE * 0.1) * (WIND_CHANGE_RATE * 0.1)) {
                 windSpeed.set(0, 0, 0);
             }
         }
         windChanged = true;
     }
 
-    // الحد من سرعة الرياح القصوى للحفاظ على الواقعية
     if (windSpeed.length() > MAX_WIND_SPEED_MAGNITUDE) {
         windSpeed.setLength(MAX_WIND_SPEED_MAGNITUDE);
     }
-
-    // إذا تغيرت الرياح، اطبع قيمة جديدة في الكونسول للمراقبة (للتصحيح فقط، سيتم عرضها على الشاشة الآن)
-    // if (windChanged) {
-    //     console.log(`Wind Speed: X=${windSpeed.x.toFixed(2)}, Z=${windSpeed.z.toFixed(2)} (Magnitude: ${windSpeed.length().toFixed(2)})`);
-    // }
 }
 
-
-// دالة تحديث موضع الكاميرا 
+// دالة تحديث موضع الكاميرا
 function updateCameraPosition() {
     const cameraDirection = new THREE.Vector3();
     camera.getWorldDirection(cameraDirection);
@@ -655,7 +1141,6 @@ function updateCameraPosition() {
     right.crossVectors(cameraDirection, camera.up);
     right.normalize();
 
-    // التحكم في حركة الكاميرا الأفقية (W, S, A, D)
     if (keyState.w) {
         camera.position.addScaledVector(cameraDirection, cameraSpeed * DT);
         controls.target.addScaledVector(cameraDirection, cameraSpeed * DT);
@@ -674,134 +1159,94 @@ function updateCameraPosition() {
         controls.target.addScaledVector(right, -cameraSpeed * DT);
     }
 
-    // التحكم في ارتفاع الكاميرا (Q, E فقط الآن)
-    if (keyState.q) { 
+    if (keyState.q) {
         camera.position.y += cameraSpeed * DT;
         controls.target.y += cameraSpeed * DT;
     }
-    if (keyState.e) { 
+    if (keyState.e) {
         camera.position.y -= cameraSpeed * DT;
         controls.target.y -= cameraSpeed * DT;
     }
 }
 
-// NEW: وظيفة لتحديث عناصر الإحصائيات في HTML
+// وظيفة لتحديث عناصر الإحصائيات في HTML
 function updateStatsDisplay() {
-    // سرعة المظلي
     document.getElementById('skydiver-speed').textContent = skydiverVelocity.length().toFixed(2);
-
-    // ارتفاع المظلي (الموضع Y)
     document.getElementById('skydiver-altitude').textContent = skydiverPosition.y.toFixed(2);
-
-    // سرعة الرياح
     document.getElementById('wind-speed').textContent = windSpeed.length().toFixed(2);
 
-    // اتجاه الرياح (بالدرجات)
-    // نستخدم atan2 (y, x) للحصول على الزاوية. هنا لدينا Z (شمال/جنوب) و X (شرق/غرب).
-    // THREE.js تستخدم X للشرق و Z للشمال.
-    // atan2(y, x) يعطي زاوية من المحور X الموجب (الشرق) عكس اتجاه عقارب الساعة.
-    // سنستخدم atan2(-windSpeed.z, windSpeed.x) لأن +Z هو "للأمام" في THREE.js،
-    // ونريد الاتجاه الكلاسيكي (0 درجة للشمال، 90 للشرق، 180 للجنوب، 270 للغرب).
-    // المحور Z في Three.js هو المحور "العميق"، فإذا كانت الرياح تتحرك في الاتجاه السالب لـ Z، فهي "نحو الشاشة" (شمال).
-    // المحور X في Three.js هو المحور "العرضي"، فإذا كانت الرياح تتحرك في الاتجاه الموجب لـ X، فهي "يميناً" (شرق).
-    
-    // للحصول على زاوية مناسبة للبوصلة (شمال 0/360، شرق 90، جنوب 180، غرب 270)
-    // نستخدم atan2(Z, X) - (Y is Z in this context)
-    let angleRad = Math.atan2(windSpeed.z, windSpeed.x);
-    let angleDeg = THREE.MathUtils.radToDeg(angleRad);
-
-    // تحويل الزاوية لتكون 0-360 درجة و 0 للشمال
-    // atan2 يعطي من -PI إلى PI (أي -180 إلى 180 درجة).
-    // سنعدلها لتكون 0-360، ونجعل الشمال (Z سالب) هو 0 أو 360 درجة.
-    // بما أن Z الموجب هو "للخلف"، Z السالب هو "للأمام".
-    // لنفترض أن X يمثل الشرق/الغرب و Z يمثل الشمال/الجنوب.
-    // atan2(y, x) يعطي الزاوية بالنسبة للمحور X الموجب.
-    // إذا أردنا 0 للشمال (-Z)، و 90 للشرق (+X)
-    
-    // الحل الأكثر شيوعاً لتحديد الاتجاه من متجه 2D (x, z):
-    // atan2(z, x) يعطي الزاوية من المحور X الموجب.
-    // المحور X في Three.js هو شرق-غرب، والمحور Z هو شمال-جنوب.
-    // لنعتبر: +X = شرق، -X = غرب، +Z = جنوب، -Z = شمال.
-    
-    // زاوية الرياح بالراديان بالنسبة للمحور X الموجب (الشرق)
-    let windAngleRad = Math.atan2(windSpeed.z, windSpeed.x);
-    // تحويل إلى درجات
-    let windAngleDeg = THREE.MathUtils.radToDeg(windAngleRad);
-
-    // تعديل الزاوية لتكون 0-360 درجة
-    if (windAngleDeg < 0) {
-        windAngleDeg += 360;
-    }
-
-    // الآن نريد تحويلها إلى اتجاهات بوصلة تقليدية (0/360 شمال، 90 شرق، 180 جنوب، 270 غرب)
-    // بما أن +X هو شرق و +Z هو جنوب (في نظامنا، بسبب دوران PlaneGeometry)
-    // 0 deg -> +X (شرق)
-    // 90 deg -> +Z (جنوب)
-    // 180 deg -> -X (غرب)
-    // 270 deg -> -Z (شمال)
-
-    // لتحويلها إلى 0=شمال، 90=شرق:
-    // زاوية الشمال (عندما يكون windSpeed.z سالباً جداً و windSpeed.x قريباً من الصفر)
-    // هي -90 درجة في atan2(z,x).
-    // نضيف 90 ونعدل الدورة
-    let compassAngle = (windAngleDeg + 90) % 360; // 0 شرق -> 90 جنوب -> 180 غرب -> 270 شمال -> 360 شرق
-    
-    // تصحيح آخر لجعل 0/360 هي الشمال الحقيقي (-Z)
-    // إذا كانت الزاوية من المحور X الموجب (الشرق):
-    // 0 = شرق
-    // 90 = جنوب
-    // 180 = غرب
-    // 270 = شمال
-
-    // لجعل الشمال 0 درجة: (360 - (windAngleDeg - 90)) % 360 
-    let finalCompassAngle = (360 - (windAngleDeg - 90)) % 360; // (90 + (360 - angleDeg)) % 360
-
-
-    // لتحديد الاتجاهات النصية (شمال، شمال شرق، إلخ)
     let directionText;
-    if (windSpeed.lengthSq() < 0.1 * 0.1) { // إذا كانت سرعة الرياح قريبة من الصفر
+    let finalCompassAngle = 0;
+
+    if (windSpeed.lengthSq() < 0.1 * 0.1) {
         directionText = "Still";
     } else {
         const directions = ["N", "NE", "E", "SE", "S", "SW", "W", "NW", "N"];
-        // اضبط الزاوية بحيث 0-360، حيث 0 هو الشمال
-        // atan2(Y, X) في الرياضيات يعطي الزاوية من X الموجب، عكس عقارب الساعة.
-        // في نظام THREE.js: +X يمين، -X يسار، +Z للخلف، -Z للأمام.
-        // لنعتبر -Z هو الشمال، +X هو الشرق.
-        // الزاوية_العادية = atan2(X, -Z)
-        let actualAngleRad = Math.atan2(windSpeed.x, -windSpeed.z); // X هو East, -Z هو North
+        let actualAngleRad = Math.atan2(windSpeed.x, -windSpeed.z);
         let actualAngleDeg = THREE.MathUtils.radToDeg(actualAngleRad);
         if (actualAngleDeg < 0) {
             actualAngleDeg += 360;
         }
-        
+        finalCompassAngle = actualAngleDeg;
         const index = Math.round(actualAngleDeg / 45);
         directionText = directions[index];
     }
-    
     document.getElementById('wind-direction').textContent = `${directionText} (${finalCompassAngle.toFixed(0)}°)`;
 }
 
+function updateSkydiverRotationBasedOnWind() {
+    // ***** جديد: لا تقم بتدوير المظلي إذا لم يكن في المحاكاة أو إذا هبط *****
+    if (!skydiverVisualGroup || !simulationStarted || hasLanded) {
+        // يمكنك هنا إعادة تعيين الدوران إلى صفر إذا أردت التأكد من أنه يقف مستقيماً
+        if (skydiverVisualGroup && hasLanded) {
+            skydiverVisualGroup.rotation.set(0,0,0);
+        }
+        return; 
+    }
+
+    const currentWindDirection = new THREE.Vector2(windSpeed.x, windSpeed.z);
+    const windMagnitude = currentWindDirection.length();
+
+    if (windMagnitude > 0.1) {
+        let tiltAmount = THREE.MathUtils.mapLinear(windMagnitude, 0, MAX_WIND_SPEED_MAGNITUDE, 0, MAX_SKYDIVER_TILT_ANGLE);
+        
+        const targetRotationX = THREE.MathUtils.clamp(windSpeed.z * WIND_TILT_SENSITIVITY, -MAX_SKYDIVER_TILT_ANGLE, MAX_SKYDIVER_TILT_ANGLE);
+        skydiverVisualGroup.rotation.x = THREE.MathUtils.lerp(skydiverVisualGroup.rotation.x, targetRotationX, TILT_LERP_FACTOR);
+
+        const targetRotationZ = THREE.MathUtils.clamp(-windSpeed.x * WIND_TILT_SENSITIVITY, -MAX_SKYDIVER_TILT_ANGLE, MAX_SKYDIVER_TILT_ANGLE);
+        skydiverVisualGroup.rotation.z = THREE.MathUtils.lerp(skydiverVisualGroup.rotation.z, targetRotationZ, TILT_LERP_FACTOR);
+    } else {
+        skydiverVisualGroup.rotation.x = THREE.MathUtils.lerp(skydiverVisualGroup.rotation.x, 0, TILT_LERP_FACTOR);
+        skydiverVisualGroup.rotation.z = THREE.MathUtils.lerp(skydiverVisualGroup.rotation.z, 0, TILT_LERP_FACTOR);
+    }
+}
 
 // حلقة الرسوميات
 function animate() {
     requestAnimationFrame(animate);
 
-    if (airplaneFlying) { 
+    if (airplane) {
         airplane.position.z -= airplaneSpeed * DT;
-        if (!simulationStarted) { 
-            skydiver.position.copy(airplane.position);
-            skydiverPosition.copy(airplane.position);
-        }
     }
 
-    updatePhysics(); 
-    updateWindDirection(); 
+    // المظلي يتبع الطائرة فقط إذا لم تبدأ المحاكاة ولم يهبط بعد
+    if (!simulationStarted && !hasLanded && skydiverVisualGroup && airplane) {
+        skydiverVisualGroup.position.copy(airplane.position);
+        skydiverPosition.copy(airplane.position);
+    }
+
+    updatePhysics(); // ستتوقف هذه الدالة عن تحديث الفيزياء عندما hasLanded = true
+    updateWindDirection(); // هذه يمكن أن تستمر في العمل لتغيير الرياح عالمياً
+    updateSkydiverRotationBasedOnWind(); // تم التعديل ليتوقف الدوران عند الهبوط
 
     updateCameraPosition();
     controls.update();
+    updateStatsDisplay();
 
-    // NEW: تحديث عرض الإحصائيات في كل إطار
-    updateStatsDisplay(); 
+    // بعد تحديث الفيزياء، قم بتحديث موقع المجموعة البصرية (لا تزال تعمل حتى بعد الهبوط لتحديث الموضع الثابت)
+    if (skydiverVisualGroup) {
+        skydiverVisualGroup.position.copy(skydiverPosition);
+    }
     
     renderer.render(scene, camera);
 }
@@ -817,32 +1262,77 @@ document.addEventListener('keydown', (event) => {
         case 'd': keyState.d = true; break;
         case 'q': keyState.q = true; break;
         case 'e': keyState.e = true; break;
-        // تحكم الرياح باستخدام الأسهم الأربعة
         case 'arrowleft': keyState.arrowLeft = true; break;
         case 'arrowright': keyState.arrowRight = true; break;
-        case 'arrowup': keyState.arrowUp = true; break; 
+        case 'arrowup': keyState.arrowUp = true; break;
         case 'arrowdown': keyState.arrowDown = true; break;
-        case 'z': keyState.z = true; break; 
-        case 'x': keyState.x = true; break; 
+        case 'z': keyState.z = true; break;
+        case 'x': keyState.x = true; break;
     }
 
     // زر 'F' للقفز من الطائرة
     if (event.key === 'f' || event.key === 'F') {
-        if (!simulationStarted) { 
-            simulationStarted = true;
-            console.log("Skydiver jumped!");
-            skydiverVelocity.z = -airplaneSpeed; 
-            skydiverVelocity.x = 0; 
+        // اسمح بالقفز فقط إذا لم تكن المحاكاة قيد التشغيل (مما يعني أن المظلي إما مع الطائرة أو قد هبط)
+        if (!simulationStarted) {
+            if (skydiverVisualGroup && airplane) {
+                // ***** جديد: إعادة تعيين جميع حالات المحاكاة لبدء قفزة جديدة *****
+                simulationStarted = true;
+                hasLanded = false; // يجب أن لا يكون قد هبط بعد
+                isParachuteOpen = false; // المظلة ليست مفتوحة
+                isParachuteOpening = false; // المظلة ليست في طور الفتح
+                parachuteOpeningProgress = 0; // إعادة ضبط تقدم الفتح
+
+                // تأكد أن المظلي مرئي ومظلته غير مرئية مبدئيًا
+                // skydiverVisualGroup.visible = true; // عادة ما يكون مرئيا بالفعل، لكن للتأكد
+                if (loadedParachuteModel) {
+                    loadedParachuteModel.visible = false; // المظلة غير مرئية في البداية
+                    // يمكنك أيضاً إعادة ضبط مقياس المظلة هنا إذا كنت تغيرها عند الفتح
+                    // loadedParachuteModel.scale.set(4250, 4250, 4250); 
+                    
+                    // أعد المظلة إلى المظلي إذا كانت قد انفصلت لأي سبب (عادة لا تحتاج إذا كان طفلاً للمظلي)
+                    if (!loadedSkydiverModel.children.includes(loadedParachuteModel)) {
+                         loadedSkydiverModel.add(loadedParachuteModel);
+                    }
+                    // أعد ضبط موضع المظلة بالنسبة للمظلي إذا لزم الأمر
+                    loadedParachuteModel.position.set(0, -375, 180);
+                    loadedParachuteModel.rotation.x = -Math.PI;
+                    loadedParachuteModel.rotation.y = 0;
+                    loadedParachuteModel.rotation.z = Math.PI;
+                }
+
+                // وضع المظلي في مكان الطائرة
+                skydiverPosition.copy(airplane.position);
+                skydiverVisualGroup.position.copy(airplane.position); // تأكد أن المجموعة البصرية تحدثت أيضًا
+                skydiverVelocity.set(0, 0, 0); // إعادة ضبط السرعة
+                skydiverAcceleration.set(0, 0, 0); // إعادة ضبط التسارع
+
+                // إعادة ضبط دوران المظلي لوضع الطيران (عادة يكون مستقيماً)
+                // هذا ضروري لعدم بدء القفزة التالية بميلان غريب
+                if (skydiverVisualGroup) {
+                    skydiverVisualGroup.rotation.set(0, 0, 0);
+                    // إذا كان لنموذجك دوران افتراضي للوقوف داخل skydiverVisualGroup
+                }
+
+                console.log("Skydiver jumped!");
+                skydiverVelocity.z = -airplaneSpeed; // أعطه سرعة أولية متجهة للخلف مع الطائرة
+                skydiverVelocity.x = 0;
+            } else {
+                console.warn("Skydiver or Airplane model not loaded yet. Please wait.");
+            }
         }
     }
 
-    // زر 'O' لفتح المظلة
+    // ===== تعديل منطق زر 'O' لفتح المظلة تدريجياً =====
     if (event.key === 'o' || event.key === 'O') {
-        if (simulationStarted && !isParachuteOpen) { 
-            isParachuteOpen = true;
-            parachute.visible = true;
-            skydiver.material.color.set(0x0000ff); 
-            console.log("Parachute opened!");
+        if (simulationStarted && !isParachuteOpen && !isParachuteOpening) {
+            if (loadedParachuteModel) {
+                isParachuteOpening = true;
+                parachuteOpeningProgress = 0;
+                loadedParachuteModel.visible = true; // اجعل المظلة مرئية عند بدء الفتح
+                console.log("Parachute opening initiated!");
+            } else {
+                console.warn("Parachute model not loaded yet. Please wait.");
+            }
         }
     }
 });
@@ -855,13 +1345,12 @@ document.addEventListener('keyup', (event) => {
         case 'd': keyState.d = false; break;
         case 'q': keyState.q = false; break;
         case 'e': keyState.e = false; break;
-        // تحكم الرياح باستخدام الأسهم الأربعة
         case 'arrowleft': keyState.arrowLeft = false; break;
         case 'arrowright': keyState.arrowRight = false; break;
-        case 'arrowup': keyState.arrowUp = false; break; 
+        case 'arrowup': keyState.arrowUp = false; break;
         case 'arrowdown': keyState.arrowDown = false; break;
-        case 'z': keyState.z = false; break; 
-        case 'x': keyState.x = false; break; 
+        case 'z': keyState.z = false; break;
+        case 'x': keyState.x = false; break;
     }
 });
 

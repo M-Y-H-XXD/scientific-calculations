@@ -1,0 +1,11 @@
+Model Information:
+* title:	Honda HA-420
+* source:	https://sketchfab.com/3d-models/honda-ha-420-5a9b43379b5a4d4eb7d4513d8e9ac296
+* author:	Yo Boy (https://sketchfab.com/jratanatharathorn)
+
+Model License:
+* license type:	CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
+* requirements:	Author must be credited. Commercial use is allowed.
+
+If you use this 3D model in your project be sure to copy paste this credit wherever you share it:
+This work is based on "Honda HA-420" (https://sketchfab.com/3d-models/honda-ha-420-5a9b43379b5a4d4eb7d4513d8e9ac296) by Yo Boy (https://sketchfab.com/jratanatharathorn) licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
